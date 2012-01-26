@@ -1,6 +1,6 @@
 class Darwin
   attr_accessor :population, :target, :generation
-  attr_accessor :population_size, :crossover_rate, :mutation_rate, :elitism, :elitism_range
+  attr_accessor :population_size, :crossover_rate, :mutation_rate, :elitism, :elitism_range, :total_fitness
 
   def initialize(target)
     self.target = target
@@ -15,14 +15,17 @@ class Darwin
   def run!
     start = Time.now
 
+    # Welcome output
     puts "============= Welcome To Darwin's Monkeys ============="
     print_parameter_debug
     puts "\nTARGET:\t\t\t#{target}\n"
+
+    # Generate initial population
     self.population = Monkey.random_population(self.population_size, length, target)
     sort_and_total_population!
-
     print_generation
 
+    # Start the evolution!
     loop do
       self.generation += 1
 
@@ -32,37 +35,42 @@ class Darwin
       break if best_attempt.genes == target
     end
 
+    # Final output
     time = Time.now - start
     puts "\n\nReached target after #{generation} generations and #{time}s."
   end
 
   def sort_and_total_population!
     self.population.sort! { |a,b| b.fitness <=> a.fitness }
-    @total_fitness = population.map(&:fitness).inject(&:+)
+    self.total_fitness = population.map(&:fitness).inject(&:+)
   end
 
   def generate_new_population!
+    # Copy over elite monkeys to next generation
     new_population = population[elitism_range]
 
     loop do
+      # Finish when we have enough new monkeys
       break if new_population.length >= population.length
 
-      daddy = select_parent
-      mummy = select_parent
+      # Select parents for breding
+      daddy, mummy = select_parent, select_parent
 
+      # Breed if crossover rate allows
       siblings = if rand < crossover_rate
                    daddy.breed(mummy)
                  else
                    [daddy, mummy]
                  end
 
-      if rand < mutation_rate
-        siblings[0] = siblings[0].mutate
-      end
-      if rand < mutation_rate
-        siblings[1] = siblings[1].mutate
+      # Mutate if mutation rate allows
+      [0,1].each do |i|
+        if rand < mutation_rate
+          siblings[i] = siblings[i].mutate
+        end
       end
 
+      # Add to new populations
       new_population += siblings
     end
 
@@ -72,7 +80,7 @@ class Darwin
 
   def select_parent
     # Uses roulette wheel selection
-    sum_to = rand(@total_fitness)
+    sum_to = rand(total_fitness)
 
     sum = 0
     population.each do |member|
