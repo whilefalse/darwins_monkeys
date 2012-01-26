@@ -15,7 +15,8 @@ class Darwin
   def run!
     start = Time.now
 
-    puts "============= Welcome To Typing Monkeys ============="
+    puts "============= Welcome To Darwin's Monkeys ============="
+    print_parameter_debug
     puts "\nTARGET:\t\t\t#{target}\n"
     self.population = Monkey.random_population(self.population_size, length, target)
     sort_and_total_population!
@@ -35,8 +36,9 @@ class Darwin
     puts "\n\nReached target after #{generation} generations and #{time}s."
   end
 
-  def print_generation
-    print "\rGeneration: #{generation}\t\t#{best_attempt.genes}\t\t(#{best_attempt.fitness}/#{length})"
+  def sort_and_total_population!
+    self.population.sort! { |a,b| b.fitness <=> a.fitness }
+    @total_fitness = population.map(&:fitness).inject(&:+)
   end
 
   def generate_new_population!
@@ -87,9 +89,15 @@ class Darwin
     population[0]
   end
 
-  def sort_and_total_population!
-    self.population.sort! { |a,b| b.fitness <=> a.fitness }
-    @total_fitness = population.map(&:fitness).inject(&:+)
+  def print_generation
+    print "\r\e[0KGeneration: #{generation}\t\t#{best_attempt.genes}\t\t(#{best_attempt.fitness}/#{length})"
+  end
+
+  def print_parameter_debug
+    puts "\nPopulation Size:\t#{population_size}"
+    puts "Crossover Rate:\t\t#{crossover_rate}"
+    puts "Mutation Rate:\t\t#{mutation_rate}"
+    puts "Elitism:\t\t#{elitism}"
   end
 end
 
