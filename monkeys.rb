@@ -4,33 +4,42 @@ class Darwin
 
   def initialize(target)
     self.target = target
-    self.population_size = 1000
-    self.elitism = 0.1
+    self.population_size = 500
+    self.elitism = 0.2
     self.elitism_range = (0..population_size * elitism)
-    self.crossover_rate = 0.7
-    self.mutation_rate = 0.2
+    self.crossover_rate = 0.8
+    self.mutation_rate = 0.1
     self.generation = 1
   end
 
   def run!
-    self.population = Monkey.random_population(self.population_size, length, target).sort.reverse
+    start = Time.now
+
+    puts "============= Welcome To Typing Monkeys ============="
+    puts "\nTARGET:\t\t\t#{target}\n"
+    self.population = Monkey.random_population(self.population_size, length, target)
+    sort_and_total_population!
+
     print_generation
 
     loop do
       self.generation += 1
 
-      mating_season
+      generate_new_population!
       print_generation
 
-      return if best_attempt.genes == target
+      break if best_attempt.genes == target
     end
+
+    time = Time.now - start
+    puts "\n\nReached target after #{generation} generations and #{time}s."
   end
 
   def print_generation
-    puts "Generation: #{generation}\t\t#{best_attempt.genes}\t\t(#{best_attempt.fitness})"
+    print "\rGeneration: #{generation}\t\t#{best_attempt.genes}\t\t(#{best_attempt.fitness}/#{length})"
   end
 
-  def mating_season
+  def generate_new_population!
     new_population = population[elitism_range]
 
     loop do
@@ -46,22 +55,22 @@ class Darwin
                  end
 
       if rand < mutation_rate
-        siblings[0].mutate!
+        siblings[0] = siblings[0].mutate
       end
       if rand < mutation_rate
-        siblings[1].mutate!
+        siblings[1] = siblings[1].mutate
       end
 
       new_population += siblings
     end
 
-    self.population = new_population.sort.reverse
+    self.population = new_population
+    sort_and_total_population!
   end
 
   def select_parent
     # Uses roulette wheel selection
-    total_fitness = population.map(&:fitness).inject(&:+)
-    sum_to = rand(total_fitness)
+    sum_to = rand(@total_fitness)
 
     sum = 0
     population.each do |member|
@@ -75,13 +84,20 @@ class Darwin
   end
 
   def best_attempt
-    population.max
+    population[0]
+  end
+
+  def sort_and_total_population!
+    self.population.sort! { |a,b| b.fitness <=> a.fitness }
+    @total_fitness = population.map(&:fitness).inject(&:+)
   end
 end
 
 class Monkey
   CHARS = ('a'..'z').to_a + ('A'..'Z').to_a + [' ']
   attr_accessor :genes, :size, :target
+
+  include Enumerable
 
   def initialize(genes, target)
     self.genes = genes
@@ -98,20 +114,17 @@ class Monkey
     [Monkey.new(first, target), Monkey.new(second, target)]
   end
 
-  def mutate!
+  def mutate
     bit = rand(size - 1)
 
-    genes[bit] = self.class.random_char
+    mutated = genes.dup
+    mutated[bit] = self.class.random_char
 
-    self
+    Monkey.new(mutated, target)
   end
 
   def fitness
     @fitness ||= target.each_char.zip(genes.each_char).select { |a,b| a == b }.count
-  end
-
-  def <=>(other)
-    fitness <=> other.fitness
   end
 
   def self.random_population(number, gene_length, target)
@@ -125,9 +138,12 @@ class Monkey
   end
 
   def self.random_string(length)
-    (0...length).map { self.random_char }.join
+    CHARS.sample(length).join
   end
 end
 
-
-Darwin.new('To be or not to be that is the question').run!
+quote = ''
+File.open('quotes.txt') do |f|
+  quote = f.read.each_line.to_a.sample.chomp
+end
+Darwin.new(quote).run!
